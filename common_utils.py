@@ -172,7 +172,6 @@ def build_cnn_model(
     kernel_size=3,           # Kernel size for all conv layers
     activation="relu",       # Activation function for conv and dense layers
     use_pooling=True,        # Whether to add MaxPooling after each conv block
-    use_skip=False,          # Whether to add skip (residual) connections between conv blocks
     num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
     dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
     pool_size=2,              # Pooling size for MaxPooling layers
@@ -194,17 +193,6 @@ def build_cnn_model(
         x = layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation)(x)
         x = layers.BatchNormalization()(x)
         
-        if use_pooling:
-            x = layers.AveragePooling2D(pool_size=(pool_size, pool_size))(x)
-        if use_skip:
-            # Use skip connection only if dimensions match; if not, project x_prev
-            if x_prev.shape[-1] == x.shape[-1]:
-                x = layers.Add()([x, x_prev])
-            else:
-                x_proj = layers.Conv2D(conv_filters[i], kernel_size=1, padding="same")(x_prev)
-                x = layers.Add()([x, x_proj])
-
-
     # Flatten feature maps
     # TODO: Add GlobalAveragePooling2D layer instead of Flatten with option from contructor
     x = layers.GlobalAveragePooling2D()(x)
@@ -230,16 +218,6 @@ def build_cnn_model(
 
 
 def build_model_from_config(config):
-    # input_shape = (128, 128, 3)  # Always start with 3-channel input
-
-    # Define input and potential grayscale conversion
-    # inputs = layers.Input(shape=input_shape)
-    # x = inputs
-
-    # if config['channels'] == 1:
-    #     x = layers.Lambda(lambda img: tf.image.rgb_to_grayscale(img))(x)
-
-    # Generate conv filters (e.g., 32 → [32, 64, 128] for 3 layers)
     conv_filters = [config['base_filters'] * (2 ** i)
                     for i in range(config['num_conv_layers'])]
     # Build the model
@@ -252,7 +230,6 @@ def build_model_from_config(config):
         kernel_size=config['kernel_size'],
         activation=config['activation'],
         use_pooling=config.get('use_pooling', False),  # From enforced rule
-        use_skip=config['use_skip'],
         num_dense_layers=config['num_dense_layers'],
         dense_units=[config['dense_units']] * config['num_dense_layers'],
         dropout_rate=config['dropout_rate'],
