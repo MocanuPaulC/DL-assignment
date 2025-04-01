@@ -51,7 +51,7 @@ def load_images_from_paths(paths_df, channels, ratio=1.0):
     def parse_image(path, target):
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
-        img = tf.image.resize(img, [200, 200])
+        img = tf.image.resize(img, [128, 128])
         img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
         return img, target
 
@@ -220,7 +220,7 @@ def build_cnn_model(
 
 
 def build_model_from_config(config):
-    input_shape = (200, 200, 3)  # Always start with 3-channel input
+    input_shape = (128, 128, 3)  # Always start with 3-channel input
 
     # Define input and potential grayscale conversion
     inputs = layers.Input(shape=input_shape)
