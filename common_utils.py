@@ -9,7 +9,7 @@ from pathlib import Path
 from collections import defaultdict
 
 def get_unique_image_shapes():
-    image_paths = list(Path("../raw_data/face_age").rglob("*.png"))
+    image_paths = list(Path("../raw_data2/face_age").rglob("*.png"))
     shapes = set()
 
     for path in image_paths:
@@ -26,7 +26,7 @@ def file_hash(path, algo='md5'):
             hasher.update(chunk)
     return hasher.hexdigest()
 
-def get_unique_image_paths(directory="../raw_data/face_age"):
+def get_unique_image_paths(directory="../raw_data2/face_age"):
     image_paths = list(Path(directory).rglob("*.png"))
     hash_to_paths = defaultdict(list)
 
@@ -38,7 +38,7 @@ def get_unique_image_paths(directory="../raw_data/face_age"):
     unique_paths = [
         paths[0]
         for paths in hash_to_paths.values()
-        if len(paths) == 1
+        if len(paths) == 2
     ]
 
     return unique_paths
@@ -76,7 +76,8 @@ def build_image_dataframe(paths):
                 "age": age
             })
         except ValueError:
-            continue
+            
+            return ValueError
 
     return pd.DataFrame(data)
 
