@@ -7,6 +7,32 @@ import tensorflow as tf
 import numpy as np
 from pathlib import Path
 from collections import defaultdict
+import optuna
+
+
+def create_model(trial):
+
+    
+    # Suggest hyperparameters.
+    num_filters = trial.suggest_int('num_filters', 16, 64, step=16)
+    dropout_rate = trial.suggest_float('dropout_rate', 0.2, 0.5)
+    learning_rate = trial.suggest_loguniform('learning_rate', 1e-4, 1e-2)
+
+    model = keras.Sequential([
+        keras.Input(shape=(28, 28, 1)),
+        layers.Conv2D(num_filters, kernel_size=(3, 3), activation='relu'),
+        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.Conv2D(num_filters * 2, kernel_size=(3, 3), activation='relu'),
+        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.Flatten(),
+        layers.Dropout(dropout_rate),
+        layers.Dense(10, activation='softmax')
+    ])
+
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
 
 def get_unique_image_shapes():
     image_paths = list(Path("../raw_data2/face_age").rglob("*.png"))
