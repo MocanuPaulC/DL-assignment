@@ -43,22 +43,25 @@ def get_unique_image_paths(directory="../raw_data/face_age"):
 
     return unique_paths
 
-def load_images_from_paths(paths_df, channels, ratio=1.0):
+
+def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=64):
 
     if ratio < 1.0:
-        paths_df = paths_df.sample(frac=ratio, random_state=69)
-
+        paths_tensor = paths_tensor[:int(ratio * len(paths_tensor))]
+        target_tensor = target_tensor[:int(ratio * len(target_tensor))]
     def parse_image(path, target):
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
-        img = tf.image.resize(img, [128, 128])
+        label= tf.one_hot(target, 13)
         img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
-        return img, target
+        return img, label
 
     # Create dataset from DataFrame columns (paths and age_bin)
-    dataset = tf.data.Dataset.from_tensor_slices((paths_df.path, paths_df.age_bin))
+    dataset = tf.data.Dataset.from_tensor_slices((paths_tensor, target_tensor))
     dataset = dataset.map(parse_image)
+    dataset = dataset.batch(batch_size)
     return dataset
+
 
 def build_image_dataframe(paths):
     data = []
@@ -135,7 +138,7 @@ def bin_ages(df):
     return df
 
 def build_cnn_model(
-    input_tensor,
+    dropout_rate=0,  # Dropout rate applied after each dense layer (set to 0 to disable)
     task="regression",       # "regression" or "classification"
     num_classes=None,        # Required if task == "classification"
     num_conv_layers=3,       # Number of convolutional blocks
@@ -146,40 +149,18 @@ def build_cnn_model(
     use_skip=False,          # Whether to add skip (residual) connections between conv blocks
     num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
     dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
-    dropout_rate=0.5,        # Dropout rate applied after each dense layer (set to 0 to disable)
-    pool_size=2              # Pooling size for MaxPooling layers
+    pool_size=2,              # Pooling size for MaxPooling layers
+
 ):
-    """
-    Build a configurable CNN model for age prediction.
-
-    Parameters:
-      input_shape (tuple): Shape of the input images, e.g., (height, width, channels).
-      task (str): "regression" for predicting exact age, "classification" for predicting age category.
-      num_classes (int): Number of classes; required for classification.
-      num_conv_layers (int): Number of convolutional blocks.
-      conv_filters (list): List of integers specifying filters in each conv block.
-                           If None, defaults to [32, 64, 128, ...] depending on num_conv_layers.
-      kernel_size (int): Kernel size for conv layers.
-      activation (str): Activation function to use.
-      use_pooling (bool): Whether to apply MaxPooling after each conv block.
-      use_skip (bool): Whether to add skip connections within conv blocks.
-      num_dense_layers (int): Number of fully connected (dense) layers after conv blocks.
-      dense_units (list): List of integers for the number of units in each dense layer.
-                          If None, defaults to [128] * num_dense_layers.
-      dropout_rate (float): Dropout rate applied after each dense layer.
-
-    Returns:
-      model (tf.keras.Model): The constructed CNN model.
-    """
     # Set default filters if none provided
     if conv_filters is None:
-        conv_filters = [32 * (2 ** i) for i in range(num_conv_layers)]
+        conv_filters = [64 * (2 ** i) for i in range(num_conv_layers)]
     # Set default dense units if none provided
     if dense_units is None:
         dense_units = [128] * num_dense_layers
 
-    x = input_tensor  # Use the preprocessed input tensor
-
+    inputs = layers.Input(shape=(200,200,3))
+    x = inputs
     # Build convolutional blocks (keep the rest of your code)
     for i in range(num_conv_layers):
         x_prev = x
@@ -187,7 +168,7 @@ def build_cnn_model(
 
         x = layers.BatchNormalization()(x)
         if use_pooling:
-            x = layers.MaxPooling2D(pool_size=(pool_size, pool_size))(x)
+            x = layers.AveragePooling2D(pool_size=(pool_size, pool_size))(x)
         if use_skip:
             # Use skip connection only if dimensions match; if not, project x_prev
             if x_prev.shape[-1] == x.shape[-1]:
@@ -197,7 +178,8 @@ def build_cnn_model(
                 x = layers.Add()([x, x_proj])
 
     # Flatten feature maps
-    x = layers.Flatten()(x)
+    # TODO: Add GlobalAveragePooling2D layer instead of Flatten with option from contructor
+    x = layers.GlobalAveragePooling2D()(x)
 
     # Add fully connected (dense) layers
     for units in dense_units:
@@ -208,26 +190,26 @@ def build_cnn_model(
     # Final output layer: regression uses a single linear neuron;
     # classification uses a softmax output with num_classes neurons.
     if task == "regression":
-        outputs = layers.Dense(1, activation="linear", name="age")(x)
+        outputs = layers.Dense(1, activation="linear")(x)
     elif task == "classification":
         if num_classes is None:
             raise ValueError("num_classes must be provided for classification task.")
-        outputs = layers.Dense(num_classes, activation="softmax", name="age_category")(x)
+        outputs = layers.Dense(num_classes, activation="softmax")(x)
     else:
         raise ValueError("task must be either 'regression' or 'classification'.")
 
-    return models.Model(inputs=input_tensor, outputs=outputs)
+    return models.Model(inputs=inputs, outputs=outputs)
 
 
 def build_model_from_config(config):
-    input_shape = (128, 128, 3)  # Always start with 3-channel input
+    # input_shape = (128, 128, 3)  # Always start with 3-channel input
 
     # Define input and potential grayscale conversion
-    inputs = layers.Input(shape=input_shape)
-    x = inputs
+    # inputs = layers.Input(shape=input_shape)
+    # x = inputs
 
-    if config['channels'] == 1:
-        x = layers.Lambda(lambda img: tf.image.rgb_to_grayscale(img))(x)
+    # if config['channels'] == 1:
+    #     x = layers.Lambda(lambda img: tf.image.rgb_to_grayscale(img))(x)
 
     # Generate conv filters (e.g., 32 → [32, 64, 128] for 3 layers)
     conv_filters = [config['base_filters'] * (2 ** i)
@@ -235,18 +217,18 @@ def build_model_from_config(config):
 
     # Build the model
     model = build_cnn_model(
-        input_tensor=x,  # Use preprocessed input
+        # input_tensor=x,  # Use preprocessed input
         task="classification",
         num_classes=13,
         num_conv_layers=config['num_conv_layers'],
-        conv_filters=conv_filters,
+        # conv_filters=conv_filters,
         kernel_size=config['kernel_size'],
         activation=config['activation'],
         use_pooling=config.get('use_pooling', False),  # From enforced rule
         use_skip=config['use_skip'],
         num_dense_layers=config['num_dense_layers'],
         dense_units=[config['dense_units']] * config['num_dense_layers'],
-        dropout_rate=config['dropout_rate'],
+        # dropout_rate=config['dropout_rate'],
         pool_size=2  # Fixed for simplicity
     )
 
