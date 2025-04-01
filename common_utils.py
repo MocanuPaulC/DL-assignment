@@ -192,8 +192,8 @@ def build_cnn_model(
     for i in range(num_conv_layers):
         x_prev = x
         x = layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation)(x)
-
         x = layers.BatchNormalization()(x)
+        
         if use_pooling:
             x = layers.AveragePooling2D(pool_size=(pool_size, pool_size))(x)
         if use_skip:
@@ -203,6 +203,7 @@ def build_cnn_model(
             else:
                 x_proj = layers.Conv2D(conv_filters[i], kernel_size=1, padding="same")(x_prev)
                 x = layers.Add()([x, x_proj])
+
 
     # Flatten feature maps
     # TODO: Add GlobalAveragePooling2D layer instead of Flatten with option from contructor
