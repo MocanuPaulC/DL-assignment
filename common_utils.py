@@ -11,8 +11,6 @@ import optuna
 
 
 def create_model(trial):
-
-    
     # Suggest hyperparameters.
     num_filters = trial.suggest_int('num_filters', 16, 64, step=16)
     dropout_rate = trial.suggest_float('dropout_rate', 0.2, 0.5)
@@ -165,6 +163,7 @@ def bin_ages(df):
     return df
 
 def build_cnn_model(
+    channels=3,         # Number of image channels (e.g., 3 for RGB)
     dropout_rate=0,  # Dropout rate applied after each dense layer (set to 0 to disable)
     task="regression",       # "regression" or "classification"
     num_classes=None,        # Required if task == "classification"
@@ -177,16 +176,17 @@ def build_cnn_model(
     num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
     dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
     pool_size=2,              # Pooling size for MaxPooling layers
+    output_activation='softmax'  # Activation function for output layer
 
 ):
     # Set default filters if none provided
     if conv_filters is None:
-        conv_filters = [64 * (2 ** i) for i in range(num_conv_layers)]
+        conv_filters = [32 * (2 ** i) for i in range(num_conv_layers)]
     # Set default dense units if none provided
     if dense_units is None:
         dense_units = [128] * num_dense_layers
 
-    inputs = layers.Input(shape=(200,200,3))
+    inputs = layers.Input(shape=(200,200,channels))
     x = inputs
     # Build convolutional blocks (keep the rest of your code)
     for i in range(num_conv_layers):
@@ -221,7 +221,7 @@ def build_cnn_model(
     elif task == "classification":
         if num_classes is None:
             raise ValueError("num_classes must be provided for classification task.")
-        outputs = layers.Dense(num_classes, activation="softmax")(x)
+        outputs = layers.Dense(num_classes, activation=output_activation)(x)
     else:
         raise ValueError("task must be either 'regression' or 'classification'.")
 
@@ -241,22 +241,22 @@ def build_model_from_config(config):
     # Generate conv filters (e.g., 32 → [32, 64, 128] for 3 layers)
     conv_filters = [config['base_filters'] * (2 ** i)
                     for i in range(config['num_conv_layers'])]
-
     # Build the model
     model = build_cnn_model(
-        # input_tensor=x,  # Use preprocessed input
-        task="classification",
-        num_classes=13,
+        task=config['task'],
+        channels=config['channels'],
+        num_classes=config['num_classes'],
         num_conv_layers=config['num_conv_layers'],
-        # conv_filters=conv_filters,
+        conv_filters=conv_filters,
         kernel_size=config['kernel_size'],
         activation=config['activation'],
         use_pooling=config.get('use_pooling', False),  # From enforced rule
         use_skip=config['use_skip'],
         num_dense_layers=config['num_dense_layers'],
         dense_units=[config['dense_units']] * config['num_dense_layers'],
-        # dropout_rate=config['dropout_rate'],
-        pool_size=2  # Fixed for simplicity
+        dropout_rate=config['dropout_rate'],
+        pool_size=config['pool_size'], # Fixed for simplicity
+        output_activation=config['output_activation']
     )
 
     return model
