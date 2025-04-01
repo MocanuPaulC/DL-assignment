@@ -55,7 +55,6 @@ def objective_wrapper(gpu_id):
             'base_filters': trial.suggest_categorical('base_filters', [32, 64, 128]),
             'kernel_size': trial.suggest_categorical('kernel_size', [3, 5, 7]),
             'activation': trial.suggest_categorical('activation', ['relu', 'swish']),
-            'use_skip': trial.suggest_categorical('use_skip', [False, True]),
             'num_dense_layers': trial.suggest_categorical('num_dense_layers', [1, 2, 3]),
             'dense_units': trial.suggest_categorical('dense_units', [128, 256]),
             'num_classes': 13,
@@ -64,11 +63,9 @@ def objective_wrapper(gpu_id):
             'pool_size': trial.suggest_categorical('pool_size', [2, 3]),
             'task': 'classification',
         }
-        config['use_pooling'] = False if config['use_skip'] else True
 
         model_name = "_".join([
             f"{config['channels']}ch",
-            f"skip_{config['use_skip']}",
             f"conv{config['num_conv_layers']}",
             f"k{config['kernel_size']}",
             config['activation'],

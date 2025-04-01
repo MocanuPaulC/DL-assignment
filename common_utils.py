@@ -171,8 +171,6 @@ def build_cnn_model(
     conv_filters=None,       # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
     kernel_size=3,           # Kernel size for all conv layers
     activation="relu",       # Activation function for conv and dense layers
-    use_pooling=True,        # Whether to add MaxPooling after each conv block
-    use_skip=False,          # Whether to add skip (residual) connections between conv blocks
     num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
     dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
     pool_size=2,              # Pooling size for MaxPooling layers
@@ -190,19 +188,9 @@ def build_cnn_model(
     x = inputs
     # Build convolutional blocks (keep the rest of your code)
     for i in range(num_conv_layers):
-        x_prev = x
         x = layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation)(x)
         x = layers.BatchNormalization()(x)
-        
-        if use_pooling:
-            x = layers.AveragePooling2D(pool_size=(pool_size, pool_size))(x)
-        if use_skip:
-            # Use skip connection only if dimensions match; if not, project x_prev
-            if x_prev.shape[-1] == x.shape[-1]:
-                x = layers.Add()([x, x_prev])
-            else:
-                x_proj = layers.Conv2D(conv_filters[i], kernel_size=1, padding="same")(x_prev)
-                x = layers.Add()([x, x_proj])
+
 
 
     # Flatten feature maps
@@ -252,7 +240,6 @@ def build_model_from_config(config):
         kernel_size=config['kernel_size'],
         activation=config['activation'],
         use_pooling=config.get('use_pooling', False),  # From enforced rule
-        use_skip=config['use_skip'],
         num_dense_layers=config['num_dense_layers'],
         dense_units=[config['dense_units']] * config['num_dense_layers'],
         dropout_rate=config['dropout_rate'],
