@@ -1,7 +1,6 @@
 import hashlib
-import os
+from PIL import Image
 import pandas as pd
-import tensorflow as tf
 from keras import layers, models
 import tensorflow as tf
 import numpy as np
@@ -45,6 +44,68 @@ def get_unique_image_paths(directory="../raw_data2/face_age"):
 
     return unique_paths
 
+
+def augment_images(unique_paths):
+    # Define rotation angles: positive for anticlockwise, negative for clockwise
+    rotation_angles = [20, 40, -20, -40]
+    new_paths = []
+
+    for path in unique_paths:
+        try:
+            img = Image.open(path)
+        except Exception as e:
+            print(f"Error opening {path}: {e}")
+            continue
+
+        folder = path.parent
+        name = path.stem
+        ext = path.suffix
+
+        # Augmentations on the original image (rotations)
+        for angle in rotation_angles:
+            rotated = img.rotate(angle, expand=True)
+            new_filename = f"{name}_rot{angle}{ext}"
+            new_path = folder / new_filename
+            rotated.save(new_path)
+            new_paths.append(new_path)
+
+        # Create mirrored image and save
+        mirrored = img.transpose(Image.FLIP_LEFT_RIGHT)
+        mirror_filename = f"{name}_mirror{ext}"
+        mirror_path = folder / mirror_filename
+        mirrored.save(mirror_path)
+        new_paths.append(mirror_path)
+
+        # Apply rotations on the mirrored image
+        for angle in rotation_angles:
+            rotated_mirrored = mirrored.rotate(angle, expand=True)
+            new_filename = f"{name}_mirror_rot{angle}{ext}"
+            new_path = folder / new_filename
+            rotated_mirrored.save(new_path)
+            new_paths.append(new_path)
+
+    return new_paths
+
+
+def load_tensors_from_paths_csv(paths_csv):
+    paths_train_df, paths_val_df, paths_test_df = split_data(paths_csv)
+
+    # Create TensorFlow constants from the DataFrame columns
+    train_filenames = tf.constant(list(paths_train_df['path']))
+    train_labels = tf.constant(list(paths_train_df['age_bin']))
+
+    val_filenames = tf.constant(list(paths_val_df['path']))
+    val_labels = tf.constant(list(paths_val_df['age_bin']))
+
+    test_filenames = tf.constant(list(paths_test_df['path']))
+    test_labels = tf.constant(list(paths_test_df['age_bin']))
+
+    # Return a nested dictionary for easy access
+    return {
+        'train': {'filenames': train_filenames, 'labels': train_labels},
+        'val': {'filenames': val_filenames, 'labels': val_labels},
+        'test': {'filenames': test_filenames, 'labels': test_labels},
+    }
 
 def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13,normalize=True):
     # label = tf.one_hot(label, num_classes)
