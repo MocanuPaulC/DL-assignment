@@ -8,29 +8,8 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 import optuna
+from tensorflow.keras import layers, models
 
-
-def create_model(trial):
-    # Suggest hyperparameters.
-    num_filters = trial.suggest_int('num_filters', 16, 64, step=16)
-    dropout_rate = trial.suggest_float('dropout_rate', 0.2, 0.5)
-    learning_rate = trial.suggest_loguniform('learning_rate', 1e-4, 1e-2)
-
-    model = keras.Sequential([
-        keras.Input(shape=(28, 28, 1)),
-        layers.Conv2D(num_filters, kernel_size=(3, 3), activation='relu'),
-        layers.MaxPooling2D(pool_size=(2, 2)),
-        layers.Conv2D(num_filters * 2, kernel_size=(3, 3), activation='relu'),
-        layers.MaxPooling2D(pool_size=(2, 2)),
-        layers.Flatten(),
-        layers.Dropout(dropout_rate),
-        layers.Dense(10, activation='softmax')
-    ])
-
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    return model
 
 def get_unique_image_shapes():
     image_paths = list(Path("../raw_data2/face_age").rglob("*.png"))
@@ -215,6 +194,58 @@ def build_cnn_model(
 
     return models.Model(inputs=inputs, outputs=outputs)
 
+
+
+
+def build_sequential_cnn_model(
+    channels=3,         # Number of image channels (e.g., 3 for RGB)
+    dropout_rate=0,     # Dropout rate applied after each dense layer (set to 0 to disable)
+    task="regression",  # "regression" or "classification"
+    num_classes=None,   # Required if task == "classification"
+    num_conv_layers=3,  # Number of convolutional blocks
+    conv_filters=None,  # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
+    kernel_size=3,      # Kernel size for all conv layers
+    activation="relu",  # Activation function for conv and dense layers
+    num_dense_layers=1, # Number of fully connected (dense) layers after the conv blocks
+    dense_units=None,   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
+    output_activation='softmax'  # Activation function for output layer
+):
+    # Set default filters if none provided
+    if conv_filters is None:
+        conv_filters = [32 * (2 ** i) for i in range(num_conv_layers)]
+    # Set default dense units if none provided
+    if dense_units is None:
+        dense_units = [128] * num_dense_layers
+
+    model = models.Sequential()
+    # Define the input shape in the first layer
+    model.add(layers.Input(shape=(200, 200, channels)))
+
+    # Build convolutional blocks
+    for i in range(num_conv_layers):
+        model.add(layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation))
+        model.add(layers.BatchNormalization())
+
+    # Global Average Pooling instead of Flatten
+    model.add(layers.GlobalAveragePooling2D())
+
+    # Add fully connected (dense) layers
+    for units in dense_units:
+        model.add(layers.Dense(units, activation=activation))
+        if dropout_rate > 0:
+            model.add(layers.Dropout(dropout_rate))
+
+    # Final output layer
+    if task == "regression":
+        model.add(layers.Dense(1, activation="linear"))
+    elif task == "classification":
+        if num_classes is None:
+            raise ValueError("num_classes must be provided for classification task.")
+        model.add(layers.Dense(num_classes, activation=output_activation))
+    else:
+        raise ValueError("task must be either 'regression' or 'classification'.")
+
+    return model
 
 def build_model_from_config(config):
     conv_filters = [config['base_filters'] * (2 ** i)
