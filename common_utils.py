@@ -46,15 +46,17 @@ def get_unique_image_paths(directory="../raw_data2/face_age"):
     return unique_paths
 
 
-def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=64):
-
+def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13):
+    # label = tf.one_hot(label, num_classes)
     if ratio < 1.0:
         paths_tensor = paths_tensor[:int(ratio * len(paths_tensor))]
         target_tensor = target_tensor[:int(ratio * len(target_tensor))]
+
+
     def parse_image(path, target):
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
-        label= tf.one_hot(target, 13)
+        label= tf.one_hot(target, class_count)
         img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
         return img, label
 
@@ -198,15 +200,13 @@ def build_cnn_model(
 
 def build_sequential_cnn_model(
     channels=3,         # Number of image channels (e.g., 3 for RGB)
-    dropout_rate=0,     # Dropout rate applied after each dense layer (set to 0 to disable)
-    task="regression",  # "regression" or "classification"
-    num_classes=None,   # Required if task == "classification"
-    num_conv_layers=3,  # Number of convolutional blocks
+    dropout_rate=0.5,     # Dropout rate applied after each dense layer (set to 0 to disable)
+    task="classification",  # "regression" or "classification"
+    num_classes=13,   # Required if task == "classification"
     conv_filters=None,  # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
     kernel_size=3,      # Kernel size for all conv layers
     activation="relu",  # Activation function for conv and dense layers
-    num_dense_layers=1, # Number of fully connected (dense) layers after the conv blocks
-    dense_units=None,   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
+    dense_units=[128],   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
     output_activation='softmax'  # Activation function for output layer
 ):
 
@@ -215,7 +215,7 @@ def build_sequential_cnn_model(
     model.add(layers.Input(shape=(200, 200, channels)))
 
     # Build convolutional blocks
-    for i in range(num_conv_layers):
+    for i in range(len(conv_filters)):
         model.add(layers.Conv2D(conv_filters[i], kernel_size, activation=activation))
         model.add(layers.AveragePooling2D(pool_size=(2,2)))
 
