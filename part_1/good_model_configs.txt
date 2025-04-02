@@ -1,0 +1,5 @@
+    {"name": "B2_deep", "conv_filters": [32, 64, 128, 256, 512]},
+    {"name": "K1_k7_deep", "kernel_size": 7, "conv_filters": [64, 128, 256]}
+    {"name": "E4_epochs_300", "epochs": 300},
+    {"name": "J2_dense_256_128", "dense_units": [256, 128]},
+    {"name": "A3_relu_k5", "activation": "relu", "kernel_size": 5},

@@ -207,7 +207,9 @@ def build_sequential_cnn_model(
     kernel_size=3,      # Kernel size for all conv layers
     activation="relu",  # Activation function for conv and dense layers
     dense_units=[128],   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
-    output_activation='softmax'  # Activation function for output layer
+    output_activation='softmax',  # Activation function for output layer
+    batch_norm=False,
+    batch_norm_dense=False,
 ):
 
     model = models.Sequential()
@@ -217,6 +219,8 @@ def build_sequential_cnn_model(
     # Build convolutional blocks
     for i in range(len(conv_filters)):
         model.add(layers.Conv2D(conv_filters[i], kernel_size, activation=activation))
+        if batch_norm:
+            model.add(layers.BatchNormalization())
         model.add(layers.AveragePooling2D(pool_size=(2,2)))
 
     # Global Average Pooling instead of Flatten
@@ -225,6 +229,8 @@ def build_sequential_cnn_model(
     # Add fully connected (dense) layers
     for units in dense_units:
         model.add(layers.Dense(units, activation=activation))
+        if batch_norm_dense:
+            model.add(layers.BatchNormalization())
         if dropout_rate > 0:
             model.add(layers.Dropout(dropout_rate))
 

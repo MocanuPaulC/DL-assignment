@@ -1,0 +1,6 @@
+
+    {"name": "I1_deep_selu", "activation": "selu", "conv_filters": [64, 128, 256, 512]},
+    {"name": "I2_shallow_tanh", "activation": "tanh", "conv_filters": [16, 32]},
+    {"name": "A4_selu_k7", "activation": "selu", "kernel_size": 7},
+    {"name": "A2_tanh_k3", "activation": "tanh", "kernel_size": 3},
+    {"name": "B1_shallow", "conv_filters": [32, 64]},
