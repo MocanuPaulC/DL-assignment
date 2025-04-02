@@ -46,7 +46,7 @@ def get_unique_image_paths(directory="../raw_data2/face_age"):
     return unique_paths
 
 
-def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13):
+def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13,normalize=True):
     # label = tf.one_hot(label, num_classes)
     if ratio < 1.0:
         paths_tensor = paths_tensor[:int(ratio * len(paths_tensor))]
@@ -57,7 +57,8 @@ def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
         label= tf.one_hot(target, class_count)
-        img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
+        if normalize:
+            img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
         return img, label
 
     # Create dataset from DataFrame columns (paths and age_bin)
