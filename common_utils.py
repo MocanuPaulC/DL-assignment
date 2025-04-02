@@ -7,7 +7,6 @@ import tensorflow as tf
 import numpy as np
 from pathlib import Path
 from collections import defaultdict
-import optuna
 from tensorflow.keras import layers, models
 
 
@@ -210,12 +209,6 @@ def build_sequential_cnn_model(
     dense_units=None,   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
     output_activation='softmax'  # Activation function for output layer
 ):
-    # Set default filters if none provided
-    if conv_filters is None:
-        conv_filters = [32 * (2 ** i) for i in range(num_conv_layers)]
-    # Set default dense units if none provided
-    if dense_units is None:
-        dense_units = [128] * num_dense_layers
 
     model = models.Sequential()
     # Define the input shape in the first layer
@@ -223,8 +216,8 @@ def build_sequential_cnn_model(
 
     # Build convolutional blocks
     for i in range(num_conv_layers):
-        model.add(layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation))
-        model.add(layers.BatchNormalization())
+        model.add(layers.Conv2D(conv_filters[i], kernel_size, activation=activation))
+        model.add(layers.AveragePooling2D(pool_size=(2,2)))
 
     # Global Average Pooling instead of Flatten
     model.add(layers.GlobalAveragePooling2D())
