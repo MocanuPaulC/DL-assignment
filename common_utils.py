@@ -142,6 +142,31 @@ def bin_ages(df):
 
     return df
 
+def bin_ages_7(df):
+    bins = [
+        (1, 4, "Infant/Toddler (1–4)"),
+        (5, 12, "Children (5–12)"),
+        (13, 19, "Teens (13–19)"),
+        (20, 34, "Young Adults (20–34)"),
+        (35, 54, "Middle Adults (35–54)"),
+        (55, 74, "Older Adults (55–74)"),
+        (75, 150, "Seniors (75+)"),
+    ]
+
+    def assign_bin_info(age):
+        for i, (low, high, label) in enumerate(bins):
+            if low <= age <= high:
+                return i, label
+        return None, None
+
+    df[["age_bin", "age_bin_label"]] = df["age"].apply(
+        lambda age: pd.Series(assign_bin_info(age))
+    )
+    df["age_bin"] = pd.Categorical(df["age_bin"])
+
+    return df
+
+
 def build_cnn_model(
     channels=3,         # Number of image channels (e.g., 3 for RGB)
     dropout_rate=0,  # Dropout rate applied after each dense layer (set to 0 to disable)
