@@ -62,7 +62,7 @@ def get_unique_image_paths(directory="../raw_data2/face_age"):
     unique_paths = [
         paths[0]
         for paths in hash_to_paths.values()
-        if len(paths) == 2
+        if len(paths) == 1
     ]
 
     return unique_paths
@@ -171,10 +171,8 @@ def build_cnn_model(
     conv_filters=None,       # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
     kernel_size=3,           # Kernel size for all conv layers
     activation="relu",       # Activation function for conv and dense layers
-    use_pooling=True,        # Whether to add MaxPooling after each conv block
     num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
     dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
-    pool_size=2,              # Pooling size for MaxPooling layers
     output_activation='softmax'  # Activation function for output layer
 
 ):
@@ -187,9 +185,10 @@ def build_cnn_model(
 
     inputs = layers.Input(shape=(200,200,channels))
     x = inputs
+
+
     # Build convolutional blocks (keep the rest of your code)
     for i in range(num_conv_layers):
-        x_prev = x
         x = layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation)(x)
         x = layers.BatchNormalization()(x)
         

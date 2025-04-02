@@ -2,3 +2,4 @@
 /raw_data/face_age/
 /raw_data2/face_age/*
 /part_1/saved_models/*
+/__pycache__/
