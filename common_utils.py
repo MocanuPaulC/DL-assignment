@@ -232,59 +232,72 @@ def bin_ages_7(df):
 
 def build_cnn_model(
     channels=3,         # Number of image channels (e.g., 3 for RGB)
-    dropout_rate=0,  # Dropout rate applied after each dense layer (set to 0 to disable)
-    task="regression",       # "regression" or "classification"
-    num_classes=None,        # Required if task == "classification"
-    num_conv_layers=3,       # Number of convolutional blocks
-    conv_filters=None,       # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
-    kernel_size=3,           # Kernel size for all conv layers
-    activation="relu",       # Activation function for conv and dense layers
-    num_dense_layers=1,      # Number of fully connected (dense) layers after the conv blocks
-    dense_units=None,        # List of unit counts for dense layers; if None, defaults to 128 per dense layer
-    output_activation='softmax'  # Activation function for output layer
+    dropout_rate=0.5,     # Dropout rate applied after each dense layer (set to 0 to disable)
+    task="classification",  # "regression" or "classification"
+    num_classes=13,   # Required if task == "classification"
+    conv_filters=None,  # List of filter sizes for each conv block; if None, defaults to increasing powers of 2
+    kernel_size=3,      # Kernel size for all conv layers
+    activation="relu",  # Activation function for conv and dense layers
+    dense_units=[128],   # List of unit counts for dense layers; if None, defaults to 128 per dense layer
+    output_activation='softmax',  # Activation function for output layer
+    batch_norm=False,
+    batch_norm_dense=False,
+    use_skip=False
 
 ):
-    # Set default filters if none provided
-    if conv_filters is None:
-        conv_filters = [32 * (2 ** i) for i in range(num_conv_layers)]
-    # Set default dense units if none provided
-    if dense_units is None:
-        dense_units = [128] * num_dense_layers
-
-    inputs = layers.Input(shape=(200,200,channels))
+    # Define model input
+    inputs = layers.Input(shape=(200, 200, channels))
     x = inputs
 
+    for filters in conv_filters:
+        # Save the input to the block for skip connection
+        block_input = x
 
-    # Build convolutional blocks (keep the rest of your code)
-    for i in range(num_conv_layers):
-        x = layers.Conv2D(conv_filters[i], kernel_size, padding="same", activation=activation)(x)
-        x = layers.BatchNormalization()(x)
-        
-    # Flatten feature maps
-    # TODO: Add GlobalAveragePooling2D layer instead of Flatten with option from contructor
+        x = layers.Conv2D(filters, kernel_size, padding="same", activation=activation)(x)
+        if batch_norm:
+            x = layers.BatchNormalization()(x)
+
+        x = layers.AveragePooling2D(pool_size=(2, 2))(x)
+
+        if use_skip:
+            # create skip branch: apply pooling to block_input to match spatial dims
+            skip = layers.AveragePooling2D(pool_size=(2, 2))(block_input)
+
+            # if channel numbers don't match, adjust with a 1x1 convolution
+            if skip.shape[-1] != filters:
+                skip = layers.Conv2D(filters, kernel_size=1, padding="same")(skip)
+            # add the skip connection
+            x = layers.Add()([x, skip])
+
     x = layers.GlobalAveragePooling2D()(x)
 
-    # Add fully connected (dense) layers
     for units in dense_units:
         x = layers.Dense(units, activation=activation)(x)
+        if batch_norm_dense:
+            x = layers.BatchNormalization()(x)
         if dropout_rate > 0:
             x = layers.Dropout(dropout_rate)(x)
 
-    # Final output layer: regression uses a single linear neuron;
-    # classification uses a softmax output with num_classes neurons.
     if task == "regression":
         outputs = layers.Dense(1, activation="linear")(x)
     elif task == "classification":
-        if num_classes is None:
-            raise ValueError("num_classes must be provided for classification task.")
         outputs = layers.Dense(num_classes, activation=output_activation)(x)
     else:
         raise ValueError("task must be either 'regression' or 'classification'.")
 
-    return models.Model(inputs=inputs, outputs=outputs)
+    model = models.Model(inputs, outputs)
+    return model
 
 
-
+channels = cfg_full["channels"],
+dropout_rate = cfg_full["dropout_rate"],
+task = cfg_full["task"],
+num_classes = cfg_full["num_classes"],
+conv_filters = cfg_full["conv_filters"],
+kernel_size = cfg_full["kernel_size"],
+activation = cfg_full["activation"],
+dense_units = cfg_full["dense_units"],
+output_activation = cfg_full["output_activation"]
 
 def build_sequential_cnn_model(
     channels=3,         # Number of image channels (e.g., 3 for RGB)
@@ -334,24 +347,3 @@ def build_sequential_cnn_model(
 
     return model
 
-def build_model_from_config(config):
-    conv_filters = [config['base_filters'] * (2 ** i)
-                    for i in range(config['num_conv_layers'])]
-    # Build the model
-    model = build_cnn_model(
-        task=config['task'],
-        channels=config['channels'],
-        num_classes=config['num_classes'],
-        num_conv_layers=config['num_conv_layers'],
-        conv_filters=conv_filters,
-        kernel_size=config['kernel_size'],
-        activation=config['activation'],
-        use_pooling=config.get('use_pooling', False),  # From enforced rule
-        num_dense_layers=config['num_dense_layers'],
-        dense_units=[config['dense_units']] * config['num_dense_layers'],
-        dropout_rate=config['dropout_rate'],
-        pool_size=config['pool_size'], # Fixed for simplicity
-        output_activation=config['output_activation']
-    )
-
-    return model
