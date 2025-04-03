@@ -289,15 +289,6 @@ def build_cnn_model(
     return model
 
 
-channels = cfg_full["channels"],
-dropout_rate = cfg_full["dropout_rate"],
-task = cfg_full["task"],
-num_classes = cfg_full["num_classes"],
-conv_filters = cfg_full["conv_filters"],
-kernel_size = cfg_full["kernel_size"],
-activation = cfg_full["activation"],
-dense_units = cfg_full["dense_units"],
-output_activation = cfg_full["output_activation"]
 
 def build_sequential_cnn_model(
     channels=3,         # Number of image channels (e.g., 3 for RGB)
