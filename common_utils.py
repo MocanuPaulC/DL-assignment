@@ -117,6 +117,7 @@ def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch
     def parse_image(path, target):
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
+        img = tf.image.resize(img, [200, 200])
         label= tf.one_hot(target, class_count)
         if normalize:
             img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
