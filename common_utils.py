@@ -110,25 +110,33 @@ def load_tensors_from_paths_csv(paths_csv):
         'test': {'filenames': test_filenames, 'labels': test_labels,'labels_regr':test_labels_regr},
     }
 
-def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13,normalize=True):
+def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13,normalize=True,task="classification"):
     # label = tf.one_hot(label, num_classes)
     if ratio < 1.0:
         paths_tensor = paths_tensor[:int(ratio * len(paths_tensor))]
         target_tensor = target_tensor[:int(ratio * len(target_tensor))]
 
-
+    debug_var="rando"
     def parse_image(path, target):
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=channels, expand_animations=False)
-        img = tf.image.resize(img, [200, 200])
+        img = tf.image.resize(img, [200, 200])    
         label= tf.one_hot(target, class_count)
-        if normalize:
-            img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
+        img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
+
+        return img, label
+
+    def parse_image_reg(path,target):
+        img = tf.io.read_file(path)
+        img = tf.image.decode_image(img, channels=channels, expand_animations=False)
+        img = tf.image.resize(img, [200, 200])
+        label = tf.cast(target, tf.float32)  
+        img = tf.cast(img, tf.float32) / 255.0  # Normalize to [0, 1]
         return img, label
 
     # Create dataset from DataFrame columns (paths and age_bin)
     dataset = tf.data.Dataset.from_tensor_slices((paths_tensor, target_tensor))
-    dataset = dataset.map(parse_image)
+    dataset = dataset.map(parse_image if task=='classification' else parse_image_reg)
     dataset = dataset.batch(batch_size)
     return dataset
 
