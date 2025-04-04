@@ -93,18 +93,21 @@ def load_tensors_from_paths_csv(paths_csv):
     # Create TensorFlow constants from the DataFrame columns
     train_filenames = tf.constant(list(paths_train_df['path']))
     train_labels = tf.constant(list(paths_train_df['age_bin']))
+    train_labels_regr = tf.constant(list(paths_train_df['age']))
 
     val_filenames = tf.constant(list(paths_val_df['path']))
     val_labels = tf.constant(list(paths_val_df['age_bin']))
+    val_labels_regr = tf.constant(list(paths_val_df['age']))
 
     test_filenames = tf.constant(list(paths_test_df['path']))
     test_labels = tf.constant(list(paths_test_df['age_bin']))
+    test_labels_regr = tf.constant(list(paths_test_df['age']))
 
     # Return a nested dictionary for easy access
     return {
-        'train': {'filenames': train_filenames, 'labels': train_labels},
-        'val': {'filenames': val_filenames, 'labels': val_labels},
-        'test': {'filenames': test_filenames, 'labels': test_labels},
+        'train': {'filenames': train_filenames, 'labels': train_labels,'labels_regr':train_labels_regr},
+        'val': {'filenames': val_filenames, 'labels': val_labels,'labels_regr':val_labels_regr},
+        'test': {'filenames': test_filenames, 'labels': test_labels,'labels_regr':test_labels_regr},
     }
 
 def load_images_from_paths(paths_tensor,target_tensor, channels, ratio=1.0,batch_size=256,class_count=13,normalize=True):
