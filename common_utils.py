@@ -8,6 +8,51 @@ from pathlib import Path
 from collections import defaultdict
 from tensorflow.keras import layers, models
 
+import matplotlib.pyplot as plt
+from IPython.display import clear_output
+from tensorflow.keras.callbacks import Callback,EarlyStopping
+from tensorflow.keras import layers, models, regularizers
+
+class LiveLossPlot(Callback):
+    def __init__(self, model_name):
+        super().__init__()
+        self.model_name = model_name
+        self.epochs = []
+        self.losses = []
+        self.val_losses = []
+
+    def on_train_begin(self, logs=None):
+        self.epochs = []
+        self.losses = []
+        self.val_losses = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.epochs.append(epoch)
+        self.losses.append(logs.get('loss'))
+        self.val_losses.append(logs.get('val_loss'))
+        clear_output(wait=True)
+        plt.figure(figsize=(8, 5))
+        plt.plot(self.epochs, self.losses, label="Training Loss")
+        plt.plot(self.epochs, self.val_losses, label="Validation Loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title(f"Loss for model: {self.model_name}")
+        plt.legend()
+        plt.show()
+
+# workaround to make sure the early stopping does have fair enough steps, but only after 60 epochs
+class DelayedEarlyStopping(EarlyStopping):
+    # delay = check only after 60 epochs
+    def __init__(self, delay=60, **kwargs):
+        super().__init__(**kwargs)
+        self.delay = delay
+
+    def on_epoch_end(self, epoch, logs=None):
+        # 
+        if epoch >= self.delay:
+            super().on_epoch_end(epoch, logs)
+
+
 
 def get_unique_image_shapes():
     image_paths = list(Path("../raw_data2/face_age").rglob("*.png"))
@@ -253,7 +298,8 @@ def build_cnn_model(
     output_activation='softmax',  # Activation function for output layer
     batch_norm=False,
     batch_norm_dense=False,
-    use_skip=False
+    use_skip=False,
+    l2_reg=0.0
 
 ):
     # Define model input
@@ -263,8 +309,10 @@ def build_cnn_model(
     for filters in conv_filters:
         # Save the input to the block for skip connection
         block_input = x
-
-        x = layers.Conv2D(filters, kernel_size, padding="same", activation=activation)(x)
+        x = layers.Conv2D(
+            filters, kernel_size, padding="same", activation=activation,
+            kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
+        
         if batch_norm:
             x = layers.BatchNormalization()(x)
 
@@ -276,23 +324,29 @@ def build_cnn_model(
 
             # if channel numbers don't match, adjust with a 1x1 convolution
             if skip.shape[-1] != filters:
-                skip = layers.Conv2D(filters, kernel_size=1, padding="same")(skip)
+                skip = layers.Conv2D(
+                    filters, kernel_size=1, padding="same",
+                    kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None
+                )(skip)
+
             # add the skip connection
             x = layers.Add()([x, skip])
 
     x = layers.GlobalAveragePooling2D()(x)
 
     for units in dense_units:
-        x = layers.Dense(units, activation=activation)(x)
+        x = layers.Dense(
+            units, activation=activation,
+            kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
         if batch_norm_dense:
             x = layers.BatchNormalization()(x)
         if dropout_rate > 0:
             x = layers.Dropout(dropout_rate)(x)
 
     if task == "regression":
-        outputs = layers.Dense(1, activation="linear")(x)
+        outputs = layers.Dense(1, activation="linear",kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
     elif task == "classification":
-        outputs = layers.Dense(num_classes, activation=output_activation)(x)
+        outputs = layers.Dense(num_classes, activation=output_activation,kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
     else:
         raise ValueError("task must be either 'regression' or 'classification'.")
 
