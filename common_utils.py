@@ -344,7 +344,7 @@ def build_cnn_model(
             x = layers.Dropout(dropout_rate)(x)
 
     if task == "regression":
-        outputs = layers.Dense(1, activation="linear",kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
+        outputs = layers.Dense(1, activation=output_activation,kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
     elif task == "classification":
         outputs = layers.Dense(num_classes, activation=output_activation,kernel_regularizer=regularizers.l2(l2_reg) if l2_reg > 0 else None)(x)
     else:
