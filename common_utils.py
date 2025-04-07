@@ -403,3 +403,30 @@ def bin_ages_7(df):
 #
 #     return model
 #
+
+
+
+def split_blocks(df):
+    """
+    Splits the input DataFrame into training, validation, and test sets
+    based on image paths (no image data is loaded).
+
+    Returns:
+        tuple: (df_block_1, df_block_2)
+    """
+    num_samples = len(df)
+    indices = np.random.permutation(num_samples)
+
+    test_split = int(0.1 * num_samples)
+    test_idx = indices[:test_split]
+    remaining_idx = indices[test_split:]
+
+    block_splot = int(0.5 * len(remaining_idx))
+    block_1 = remaining_idx[:block_splot]
+    block_2 = remaining_idx[block_splot:]
+
+    return (
+        df.iloc[block_1].reset_index(drop=True),
+        df.iloc[block_2].reset_index(drop=True),
+        df.iloc[test_idx].reset_index(drop=True),
+    )
