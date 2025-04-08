@@ -472,3 +472,31 @@ def build_autoencoder(
                                      kernel_regularizer=regularizers.l2(l2_reg))(x)
 
     return models.Model(inputs, outputs)
+
+def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
+
+    x = encoder.output
+    x = layers.GlobalAveragePooling2D()(x)
+
+    for units in config["dense_units"]:
+        x = layers.Dense(units, activation="relu",
+                         kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+        if config.get("batch_norm_dense", False):
+            x = layers.BatchNormalization()(x)
+        if config.get("dropout_rate", 0) > 0:
+            x = layers.Dropout(config["dropout_rate"])(x)
+
+    output_activation = "softmax" if config["task"] == "classification" else "linear"
+    if config["task"] == "classification":
+        output = layers.Dense(num_classes, activation=output_activation,
+                              kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+    elif config["task"] == "regression":
+        output = layers.Dense(1, activation=output_activation,
+                              kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+    else:
+        raise ValueError("Task must be 'classification' or 'regression'")
+
+    model = models.Model(inputs=encoder.input, outputs=output)
+    return model
+
+
