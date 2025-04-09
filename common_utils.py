@@ -486,8 +486,8 @@ def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
         if config.get("dropout_rate", 0) > 0:
             x = layers.Dropout(config["dropout_rate"])(x)
 
-        output = layers.Dense(num_classes, activation="sigmoid",
-                              kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+    output = layers.Dense(num_classes, activation="softmax",
+                          kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
 
     model = models.Model(inputs=encoder.input, outputs=output)
     return model

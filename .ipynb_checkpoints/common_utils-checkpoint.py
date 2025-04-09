@@ -468,7 +468,7 @@ def build_autoencoder(
 
     outputs = layers.Conv2DTranspose(input_shape[-1], (kernel_size, kernel_size),
                                      strides=(2, 2), padding='same',
-                                     activation="softmax",
+                                     activation="sigmoid",
                                      kernel_regularizer=regularizers.l2(l2_reg))(x)
 
     return models.Model(inputs, outputs)
@@ -486,8 +486,8 @@ def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
         if config.get("dropout_rate", 0) > 0:
             x = layers.Dropout(config["dropout_rate"])(x)
 
-        output = layers.Dense(num_classes, activation="softmax",
-                              kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+    output = layers.Dense(num_classes, activation="softmax",
+                          kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
 
     model = models.Model(inputs=encoder.input, outputs=output)
     return model
