@@ -1,0 +1,2 @@
+batch_size,epochs,channels,dropout_rate,task,num_classes,conv_filters,kernel_size,activation,dense_units,output_activation,batch_norm,batch_norm_dense,normalize,aug_data,use_skip,l2_reg,name,resize,loss,metrics,history,best_model_path
+32,500,3,0.5,autoencoder,7,"[32, 64, 128, 256]",3,relu,"[512, 256, 128]",softmax,False,True,True,True,False,0,B2B_deep_bn_reg_aug_autoencoder,192,mse,"['mse', 'mae']",<keras.src.callbacks.History object at 0x79e1ad727890>,autoencoder_saved_models_config_2/B2B_deep_bn_reg_aug_autoencoder_best_model.keras

@@ -74,7 +74,7 @@ def file_hash(path, algo='md5'):
             hasher.update(chunk)
     return hasher.hexdigest()
 
-def get_unique_image_paths(directory="../raw_data/face_age"):
+def get_unique_image_paths(directory="../raw_data2/face_age"):
     image_paths = list(Path(directory).rglob("*.png"))
     hash_to_paths = defaultdict(list)
 
@@ -486,7 +486,7 @@ def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
         if config.get("dropout_rate", 0) > 0:
             x = layers.Dropout(config["dropout_rate"])(x)
 
-        output = layers.Dense(num_classes, activation="softmax",
+        output = layers.Dense(num_classes, activation="sigmoid",
                               kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
 
     model = models.Model(inputs=encoder.input, outputs=output)
