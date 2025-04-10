@@ -359,12 +359,6 @@ def build_cnn_model(
 
 
 
-def get_base_name(file_path):
-
-    file_name = os.path.basename(file_path)
-    base, _ = os.path.splitext(file_name)
-    # split at underscore if present and return the first part( aka the base name of the file)
-    return base.split('_')[0]
 
 
 def split_blocks(df):
@@ -406,6 +400,12 @@ def split_blocks(df):
 
     return train_block1, val_block1, train_block2, val_block2, test_block
 
+def get_base_name(file_path):
+
+    file_name = os.path.basename(file_path)
+    base, _ = os.path.splitext(file_name)
+    # split at underscore if present and return the first part( aka the base name of the file)
+    return base.split('_')[0]
 
 def add_augmentations(train_df, debug=False):
     augmented_rows = []
@@ -493,4 +493,24 @@ def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
     model = models.Model(inputs=input_tensor, outputs=output)
     return model
 
+
+from transformers import pipeline
+
+
+def get_gendered_images(dataframe):
+
+    pipe = pipeline("image-classification", model="rizvandwiki/gender-classification")
+
+    def predict_gender(path):
+
+        image = Image.open(path).convert("RGB")
+
+        results = pipe(image)
+        predicted_gender = results[0]['label']
+
+        return predicted_gender
+
+    dataframe['gender'] = dataframe['path'].apply(predict_gender)
+
+    return dataframe
 
