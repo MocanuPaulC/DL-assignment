@@ -474,13 +474,14 @@ def build_autoencoder(
     return models.Model(inputs, outputs)
 
 def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
+    input_tensor = layers.Input(shape=(192, 192, 3))  
 
-    x = encoder.output
+    x = encoder(input_tensor, training=False)  
     x = layers.GlobalAveragePooling2D()(x)
 
+
     for i, units in enumerate(config["dense_units"]):
-        x = layers.Dense(units, activation="relu",
-                         kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
+        x = layers.Dense(units, activation="relu")(x)
         if config.get("batch_norm_dense", False):
             x = layers.BatchNormalization(name=f"batch_norm_dense_{i}")(x)
         if config.get("dropout_rate", 0) > 0:
@@ -489,7 +490,7 @@ def build_transfer_model_from_autoencoder(encoder, config, num_classes=13):
     output = layers.Dense(num_classes, activation="softmax",
                           kernel_regularizer=regularizers.l2(config["l2_reg"]))(x)
 
-    model = models.Model(inputs=encoder.input, outputs=output)
+    model = models.Model(inputs=input_tensor, outputs=output)
     return model
 
 
